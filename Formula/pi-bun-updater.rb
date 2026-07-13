@@ -4,6 +4,7 @@ class PiBunUpdater < Formula
   url "https://github.com/Nabsku/pi-bun-updater/archive/refs/tags/v0.0.2.tar.gz"
   sha256 "1b226ac9af458d2d8cc78058f7dc6ee393f9963591e6c691fe93582bc69f8635"
   license :cannot_represent
+  revision 1
 
   depends_on "go" => :build
 
