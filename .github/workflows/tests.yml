@@ -40,14 +40,28 @@ jobs:
       - run: brew test-bot --only-cleanup-before
       - run: brew test-bot --only-setup
       - run: brew test-bot --only-tap-syntax
-      - name: Test changed formulae
+      - name: Detect formula changes
+        id: formula_changes
         if: github.event_name != 'push'
+        env:
+          BASE_REF: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.base_ref }}
+        run: |
+          tap_path=$(brew --repository "$GITHUB_REPOSITORY")
+          git -C "$tap_path" fetch origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          if git -C "$tap_path" diff --quiet "origin/$BASE_REF...HEAD" -- Formula; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Test changed formulae
+        if: github.event_name != 'push' && steps.formula_changes.outputs.changed == 'true'
         env:
           GITHUB_BASE_REF: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.base_ref }}
         run: brew test-bot --only-formulae
 
       - name: Upload bottles as artifact
-        if: success() && github.event_name != 'push'
+        if: success() && github.event_name != 'push' && steps.formula_changes.outputs.changed == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: bottles_${{ matrix.os }}
@@ -75,14 +89,28 @@ jobs:
       - run: brew test-bot --only-cleanup-before
       - run: brew test-bot --only-setup
       - run: brew test-bot --only-tap-syntax
-      - name: Test changed formulae
+      - name: Detect formula changes
+        id: formula_changes
         if: github.event_name != 'push'
+        env:
+          BASE_REF: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.base_ref }}
+        run: |
+          tap_path=$(brew --repository "$GITHUB_REPOSITORY")
+          git -C "$tap_path" fetch origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          if git -C "$tap_path" diff --quiet "origin/$BASE_REF...HEAD" -- Formula; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Test changed formulae
+        if: github.event_name != 'push' && steps.formula_changes.outputs.changed == 'true'
         env:
           GITHUB_BASE_REF: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.base_ref }}
         run: brew test-bot --only-formulae
 
       - name: Upload bottles as artifact
-        if: success() && github.event_name != 'push'
+        if: success() && github.event_name != 'push' && steps.formula_changes.outputs.changed == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: bottles_ubuntu-latest
