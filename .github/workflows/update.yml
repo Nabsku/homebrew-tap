@@ -1,0 +1,84 @@
+name: Update pi-bun-updater
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: update-pi-bun-updater
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@1f8e202ffddf94def7f42f6fa3a482e821489f9c # 2026.07.10.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up git
+        uses: Homebrew/actions/git-user-config@1f8e202ffddf94def7f42f6fa3a482e821489f9c # 2026.07.10.1
+
+      - name: Install updater dependencies
+        run: brew install gh jq
+
+      - name: Open an update pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          latest_tag=$(gh api repos/Nabsku/pi-bun-updater/releases/latest --jq .tag_name)
+          if [[ ! "$latest_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Unexpected release tag: $latest_tag" >&2
+            exit 1
+          fi
+
+          version=${latest_tag#v}
+          current_version=$(brew info --json=v2 Nabsku/tap/pi-bun-updater | jq -r '.formulae[0].versions.stable')
+          if [[ "$version" == "$current_version" ]]; then
+            echo "Formula is already current at $version."
+            exit 0
+          fi
+
+          branch="automation/pi-bun-updater-$version"
+          if [[ $(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state open --json number --jq length) -gt 0 ]]; then
+            echo "An update pull request for $version is already open."
+            exit 0
+          fi
+
+          url="https://github.com/Nabsku/pi-bun-updater/archive/refs/tags/$latest_tag.tar.gz"
+          archive=$(mktemp)
+          trap 'rm -f "$archive"' EXIT
+          curl --fail --location --silent --show-error "$url" --output "$archive"
+          sha256=$(shasum -a 256 "$archive" | cut -d ' ' -f 1)
+
+          git switch --create "$branch"
+          brew bump-formula-pr \
+            --write-only \
+            --version="$version" \
+            --url="$url" \
+            --sha256="$sha256" \
+            Nabsku/tap/pi-bun-updater
+          brew audit --strict --online Nabsku/tap/pi-bun-updater
+
+          git add Formula/pi-bun-updater.rb
+          git commit -m "pi-bun-updater $version"
+          git push origin "HEAD:$branch"
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base main \
+            --head "$branch" \
+            --title "pi-bun-updater $version" \
+            --body "Automated formula update for [pi-bun-updater $latest_tag](https://github.com/Nabsku/pi-bun-updater/releases/tag/$latest_tag)."
+
+          # Pull requests opened with GITHUB_TOKEN do not emit another workflow event.
+          # Dispatch the standard test-bot workflow explicitly against the PR head.
+          gh workflow run tests.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
