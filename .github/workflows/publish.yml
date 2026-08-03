@@ -64,6 +64,6 @@ jobs:
           brew pr-pull "${args[@]}" "$PULL_REQUEST"
 
       - name: Push commits
-        uses: Homebrew/actions/git-try-push@1f8e202ffddf94def7f42f6fa3a482e821489f9c # 2026.07.10.1
+        uses: Homebrew/actions/git-try-push@9af03b7ae3f9e2ae5c174f659d5c3909f7e7dbac # 2026.07.29.1
         with:
           branch: main
