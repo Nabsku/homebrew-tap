@@ -61,9 +61,10 @@ jobs:
           sha256=$(shasum -a 256 "$archive" | cut -d ' ' -f 1)
 
           git switch --create "$branch"
+          # The tagged archive URL supplies the formula version. Passing
+          # --version would add a redundant stanza that brew audit rejects.
           brew bump-formula-pr \
             --write-only \
-            --version="$version" \
             --url="$url" \
             --sha256="$sha256" \
             Nabsku/tap/pi-bun-updater
