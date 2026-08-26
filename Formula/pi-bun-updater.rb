@@ -1,10 +1,9 @@
 class PiBunUpdater < Formula
   desc "Install and manage the official compiled Bun build of Pi"
   homepage "https://github.com/Nabsku/pi-bun-updater"
-  url "https://github.com/Nabsku/pi-bun-updater/archive/refs/tags/v0.0.2.tar.gz"
-  sha256 "1b226ac9af458d2d8cc78058f7dc6ee393f9963591e6c691fe93582bc69f8635"
+  url "https://github.com/Nabsku/pi-bun-updater/archive/refs/tags/v0.1.0.tar.gz"
+  sha256 "f8967302c696a5f1a426fbd1d9289cfe3c6d2d70b7ebc60fc1dc830e7e1ec458"
   license :cannot_represent
-  revision 1
 
   bottle do
     root_url "https://github.com/Nabsku/homebrew-tap/releases/download/pi-bun-updater-0.0.2_1"
